@@ -1,7 +1,7 @@
 package com.example.handsonpizza.service;
 
 import com.example.handsonpizza.client.PizzaInventoryClient;
-import com.example.handsonpizza.dataaccess.InMemoryDatabase;
+import com.example.handsonpizza.dataaccess.PizzaOrderRepository;
 import com.example.handsonpizza.model.OrderItem;
 import com.example.handsonpizza.model.PizzaOrder;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,18 +12,19 @@ import java.util.stream.Collectors;
 
 @Service
 public class PizzaOrderService {
-    private List<PizzaOrder> orders = InMemoryDatabase.DATABASE;
-
     private final PizzaInventoryClient pizzaInventoryClient;
 
+    private final PizzaOrderRepository pizzaOrderRepository;
+
     @Autowired
-    public PizzaOrderService(PizzaInventoryClient pizzaInventoryClient) {
+    public PizzaOrderService(PizzaInventoryClient pizzaInventoryClient, PizzaOrderRepository pizzaOrderRepository) {
         this.pizzaInventoryClient = pizzaInventoryClient;
+        this.pizzaOrderRepository = pizzaOrderRepository;
     }
 
     public PizzaOrder retrieveOrderById(int id) throws IllegalArgumentException {
 
-        Optional<PizzaOrder> pizzaOrder = orders.stream().filter(order -> order.getId() == id).findFirst();
+        Optional<PizzaOrder> pizzaOrder = pizzaOrderRepository.findById(id);
 
         if(pizzaOrder.isEmpty()) {
             throw new IllegalArgumentException();
@@ -34,7 +35,7 @@ public class PizzaOrderService {
     }
 
     public List<PizzaOrder> retrieveOrdersByPizzaName(String pizzaName) {
-        return orders
+        return pizzaOrderRepository.findAll()
                 .stream()
                 .filter(order -> order
                         .getOrderItems()
@@ -44,7 +45,7 @@ public class PizzaOrderService {
     }
 
     public List<PizzaOrder> retrieveAllOrders() {
-        return orders;
+        return pizzaOrderRepository.findAll();
     }
 
     public PizzaOrder createNewOrder(List<OrderItem> orderItems) throws IllegalStateException {
@@ -53,9 +54,10 @@ public class PizzaOrderService {
                 throw new IllegalStateException();
             }
         }
-        int lastPizzaOrderId = Math.toIntExact(InMemoryDatabase.DATABASE.size());
+
+        int lastPizzaOrderId = Math.toIntExact(pizzaOrderRepository.count());
         PizzaOrder pizzaOrder = new PizzaOrder(++lastPizzaOrderId,orderItems);
-        InMemoryDatabase.DATABASE.add(pizzaOrder);
+        pizzaOrderRepository.save(pizzaOrder);
 
         return pizzaOrder;
     }
